@@ -115,6 +115,7 @@ func main() {
 		os.Exit(0)
 	case "discover":
 		config := getRokuConfig()
+		config.Rokus = findRokus()
 		if len(config.Rokus) > 0 {
 			for _, r := range config.Rokus {
 				fmt.Print("Found roku at ", r.Address)
@@ -124,6 +125,7 @@ func main() {
 				fmt.Println()
 			}
 		}
+		writeConfig(config)
 		os.Exit(0)
 	case "use":
 		config := getRokuConfig()
