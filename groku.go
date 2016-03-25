@@ -308,15 +308,16 @@ func getRokuConfig() grokuConfig {
 		config.Timestamp = time.Now().Unix()
 	} else {
 		// the config file exists
+		// the config file has an error, recreate the info
 		if err := json.NewDecoder(configFile).Decode(&config); err != nil {
 			config.Rokus = findRokus()
 		}
 
-		//if the config file is over 60 seconds old, then replace it
-		if config.Timestamp == 0 || time.Now().Unix()-config.Timestamp > 60 {
-			config.Rokus = findRokus()
-			config.Timestamp = time.Now().Unix()
-		}
+		////if the config file is over 60 seconds old, then replace it
+		//if config.Timestamp == 0 || time.Now().Unix()-config.Timestamp > 60 {
+		//	config.Rokus = findRokus()
+		//	config.Timestamp = time.Now().Unix()
+		//}
 	}
 
 	if config.LastName != "" {
@@ -334,6 +335,7 @@ func getRokuConfig() grokuConfig {
 	} else {
 		config.Current = config.Rokus[0]
 	}
+	config.LastName = config.Current.Name
 	writeConfig(config)
 	return config
 }
