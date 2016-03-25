@@ -19,7 +19,7 @@ import (
 var CONFIG string
 
 const (
-	VERSION = "0.4"
+	VERSION = "0.5"
 	USAGE   = `usage: groku [--version] [--help] <command> [<args>]
 
 CLI remote for your Roku
@@ -88,7 +88,7 @@ func main() {
 		fmt.Println("Cannot find home directory")
 		os.Exit(1)
 	}
-	CONFIG = fmt.Sprintf("%s/groku.json", home)
+	CONFIG = fmt.Sprintf("%s/.groku.json", home)
 
 	if len(os.Args) == 1 || os.Args[1] == "--help" || os.Args[1] == "-help" ||
 		os.Args[1] == "--h" || os.Args[1] == "-h" || os.Args[1] == "help" {
