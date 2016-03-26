@@ -126,11 +126,16 @@ func main() {
 				fmt.Println()
 			}
 		}
-		writeConfig(config)
+		config.write()
 		os.Exit(0)
 	case "list":
 		config := getRokuConfig()
 		for _, r := range config.Rokus {
+			if r.Address == config.Current.Address {
+				fmt.Print("*  ")
+			} else {
+				fmt.Print("   ")
+			}
 			if r.Name != "" {
 				fmt.Print(r.Name, ": ")
 			}
@@ -138,16 +143,17 @@ func main() {
 		}
 	case "use":
 		config := getRokuConfig()
-		for _, r := range config.Rokus {
-			if strings.ToUpper(os.Args[2]) == strings.ToUpper(r.Name) {
+		if os.Args[2] != "" {
+			if r, err := config.findRoku(os.Args[2]); err == nil {
 				config.Current = r
 				config.LastName = os.Args[2]
-				writeConfig(config)
+				config.write()
 				fmt.Printf("Using Roku named %v at %v", r.Name, r.Address)
-				os.Exit(0)
+			} else {
+				fmt.Printf("Cannot find Roku named %v\n", os.Args[2])
 			}
+			os.Exit(0)
 		}
-		fmt.Printf("Cannot find Roku named %v\n", os.Args[2])
 	case "device-info":
 		var info = queryInfo()
 		if getCurrentRokuName() != "" {
@@ -299,12 +305,11 @@ func getCurrentRokuName() string {
 
 func getRokuConfigFor(name string) (*roku, error) {
 	config := getRokuConfig()
-	for _, e := range config.Rokus {
-		if strings.ToUpper(e.Name) == strings.ToUpper(name) {
-			return &e, nil
-		}
+	if r, err := config.findRoku(name); err == nil {
+		return &r, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("%v not found", name))
 	}
-	return nil, errors.New(fmt.Sprintf("%v not found", name))
 }
 
 func getRokuConfig() grokuConfig {
@@ -323,36 +328,36 @@ func getRokuConfig() grokuConfig {
 		if err := json.NewDecoder(configFile).Decode(&config); err != nil {
 			config.Rokus = findRokus()
 		}
-
-		////if the config file is over 60 seconds old, then replace it
-		//if config.Timestamp == 0 || time.Now().Unix()-config.Timestamp > 60 {
-		//	config.Rokus = findRokus()
-		//	config.Timestamp = time.Now().Unix()
-		//}
 	}
 
 	if config.LastName != "" {
-		found := false
-		for _, e := range config.Rokus {
-			if strings.ToUpper(e.Name) == strings.ToUpper(config.LastName) {
-				config.Current = e
-				found = true
-			}
-		}
-		if !found {
+		r, err := config.findRoku(config.LastName)
+		if err != nil {
 			config.Current = config.Rokus[0]
 			fmt.Printf("Previously used Roku %v not found anymore, using %v as new default", config.LastName, config.Current.Name)
+		} else {
+			config.Current = r
 		}
 	} else {
 		config.Current = config.Rokus[0]
 	}
 	config.LastName = config.Current.Name
-	writeConfig(config)
+	config.write()
 	return config
 }
 
-func writeConfig(config grokuConfig) error {
-	if b, err := json.Marshal(config); err == nil {
+func (c *grokuConfig) findRoku(name string) (roku, error) {
+	for _, e := range c.Rokus {
+		if strings.ToUpper(e.Name) == strings.ToUpper(name) {
+			return e, nil
+		}
+	}
+
+	return roku{}, errors.New("Not found")
+}
+
+func (c *grokuConfig) write() error {
+	if b, err := json.Marshal(&c); err == nil {
 		ioutil.WriteFile(CONFIG, b, os.ModePerm)
 	}
 
