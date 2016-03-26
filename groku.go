@@ -141,9 +141,10 @@ func main() {
 			}
 			fmt.Println(r.Address)
 		}
+		os.Exit(0)
 	case "use":
 		config := getRokuConfig()
-		if os.Args[2] != "" {
+		if len(os.Args) == 3 {
 			if r, err := config.findRoku(os.Args[2]); err == nil {
 				config.Current = r
 				config.LastName = os.Args[2]
@@ -152,8 +153,10 @@ func main() {
 			} else {
 				fmt.Printf("Cannot find Roku named %v\n", os.Args[2])
 			}
-			os.Exit(0)
+		} else {
+			fmt.Printf("Using Roku named %v at %v", config.Current.Name, config.Current.Address)
 		}
+		os.Exit(0)
 	case "device-info":
 		var info = queryInfo()
 		if getCurrentRokuName() != "" {
@@ -161,6 +164,7 @@ func main() {
 		}
 		fmt.Printf("Model:\t\t%v %v\n", info.ModelName, info.ModelNum)
 		fmt.Printf("Serial:\t\t%v\n", info.Serial)
+		os.Exit(0)
 	case "text":
 		if len(os.Args) < 3 {
 			fmt.Println(USAGE)
