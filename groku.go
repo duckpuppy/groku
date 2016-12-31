@@ -66,6 +66,18 @@ type deviceinfo struct {
 	DeviceName string   `xml:"user-device-name"`
 }
 
+type ssdpdevice struct {
+	XMLName      xml.Name
+	Manufacturer string `xml:"manufacturer"`
+	FriendlyName string `xml:"friendlyName"`
+	DeviceType   string `xml:"deviceType"`
+}
+
+type ssdpdescription struct {
+	XMLName xml.Name
+	Device  ssdpdevice `xml:"device"`
+}
+
 type app struct {
 	Name string `xml:",chardata"`
 	ID   string `xml:"id,attr"`
@@ -278,8 +290,7 @@ func findRokus() []roku {
 	listentimer := time.Now().Add(5 * time.Second)
 	for time.Now().Before(listentimer) {
 		answerBytes := make([]byte, 1024)
-		err = socket.SetReadDeadline(listentimer)
-		if err != nil {
+		if err := socket.SetReadDeadline(listentimer); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -288,15 +299,46 @@ func findRokus() []roku {
 
 		if err == nil {
 			ret := strings.Split(string(answerBytes), "\r\n")
-			location := strings.TrimPrefix(ret[len(ret)-3], "LOCATION: ")
-			name := queryInfoForAddress(location).DeviceName
+			location, err := getLocation(ret)
+			if err == nil {
+				if isRoku(location) {
+					name := queryInfoForAddress(location).DeviceName
 
-			r := roku{Name: name, Address: location}
-			rokus = append(rokus, r)
+					r := roku{Name: name, Address: location}
+					rokus = append(rokus, r)
+				}
+			}
 		}
 	}
 
 	return rokus
+}
+
+func getLocation(headers []string) (string, error) {
+	for _, s := range headers {
+		if strings.HasPrefix(s, "LOCATION:") {
+			return strings.TrimPrefix(s, "LOCATION: "), nil
+		}
+	}
+	return "", errors.New("No location found")
+}
+
+func isRoku(location string) bool {
+	resp, err := http.Get(location)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	defer resp.Body.Close()
+
+	var desc ssdpdescription
+	if err := xml.NewDecoder(resp.Body).Decode(&desc); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return desc.Device.Manufacturer == "Roku"
 }
 
 func getCurrentRokuAddress() string {
